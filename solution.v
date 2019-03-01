@@ -40,33 +40,6 @@ Proof.
   lia.
 Qed.
 
-Lemma divide_pow : forall n a b, (a | b) -> (a ^ n | b ^ n).
-Proof.
-  intro n.
-  induction n using (well_founded_ind (Zwf_well_founded 0)).
-  intros a b.
-  destruct (Z.lt_ge_cases n 0) as [| Hge0].
-  - repeat rewrite Z.pow_neg_r; auto with *.
-  - destruct (Zle_lt_or_eq _ _ Hge0) as [Hge1%Zlt_le_succ | Heq0].
-    + simpl in Hge1.
-      destruct (Zle_lt_or_eq _ _ Hge1) as [Hge2%Zlt_le_succ | Heq1].
-      * specialize (H (n - 1)).
-        cut_hyp H. {
-          unfold Zwf.
-          auto with *.
-        }
-        intro Hdiv.
-        specialize (H a b Hdiv).
-        replace n with (n - 1 + 1); auto with *.
-        repeat rewrite Z.pow_add_r; auto with *.
-        repeat rewrite Z.pow_1_r.
-        now apply factor_prod.
-      * subst.
-        now repeat rewrite Z.pow_1_r.
-    + subst.
-      repeat rewrite Z.pow_0_r; auto  with *.
-Qed.
-
 Lemma not_prime_divide_prime :
   forall n, 1 < n -> ~prime n -> exists p, 1 < p < n /\ (p | n) /\ prime p.
 Proof.
@@ -86,6 +59,7 @@ Inductive Factors : Z -> Prop :=
 | factors_1 : Factors 1
 | factors_prod : forall p m, prime p -> Factors m -> Factors (m * p).
 Hint Constructors Factors.
+
 Lemma pos_factors : forall n, 1 <= n -> Factors n.
 Proof.
   induction n using (well_founded_ind (Zwf_well_founded 0)).
@@ -117,35 +91,27 @@ Proof.
 Qed.
 Hint Resolve factors_pos.
 
-Lemma divide_pow_prime : forall n p b, 0 < n -> prime p -> 1 <= b -> (p ^ n | b ^ n) -> (p | b).
+
+Lemma divide_sq_prime : forall p b, prime p -> 1 <= b -> (p ^ 2 | b ^ 2) -> (p | b).
 Proof.
-  intros n p b Hn Hp Hb Hdiv.
-  assert (p | b ^ n) as Hdiv'. {
-    apply Z.divide_trans with (p ^ n); auto with *.
+  intros p b Hp Hb Hdiv.
+  assert (p | b ^ 2) as Hdiv'. {
+    apply Z.divide_trans with (p ^ 2); auto with *.
   }
   clear Hdiv.
-  induction n using (well_founded_ind (Zwf_well_founded 0)).
-  unfold Zwf in *.
-  destruct (Zle_lt_or_eq 1 n); auto with *.
-  - replace n with (1 + (n - 1)) in Hdiv'; auto with *.
-    rewrite Z.pow_add_r in Hdiv'; auto with *.
-    rewrite Z.pow_1_r in Hdiv'.
-    apply prime_mult in Hdiv'; auto.
-    destruct Hdiv'; auto.
-    apply H with (y := n - 1); auto with *.
-  - subst.
-    now rewrite Z.pow_1_r in *.
+  rewrite Z.pow_2_r in Hdiv'.
+  apply prime_mult in Hdiv'; tauto.
 Qed.
 
-Lemma divide_pow_inv : forall n a b, 0 < n -> 1 <= a -> 1 <= b -> (a ^ n | b ^ n) -> (a | b).
-Proof.
-  intros n a b Hn Ha Hb.
-  revert b Hb.
 
+Lemma divide_sq_inv : forall a b, 1 <= a -> 1 <= b -> (a ^ 2 | b ^ 2) -> (a | b).
+Proof.
+  intros a b Ha Hb.
+  revert b Hb.
   induction (pos_factors Ha); auto with *.
   intros b Hb Hdiv.
-  destruct (@divide_pow_prime n p b) as [k ->]; auto .
-  - apply Z.divide_trans with ((m * p) ^ n); auto.
+  destruct (@divide_sq_prime p b) as [k ->]; auto with *.
+  - apply Z.divide_trans with ((m * p) ^ 2); auto.
     rewrite Z.pow_mul_l.
     auto with *.
   - apply Z.mul_divide_mono_r.
@@ -154,10 +120,9 @@ Proof.
       destruct (Z.le_0_mul k p) as [Hkp | Hkp]; auto with *.
       destruct Hkp as [Hk _].
       destruct (Zle_lt_or_eq _ _ Hk); subst; auto with *.
-    + apply Z.mul_divide_cancel_r with (p := p ^ n).
-      * intros He%Z.pow_eq_0; subst; auto with *.
-      * repeat rewrite <- Z.pow_mul_l.
-        assumption.
+    + repeat rewrite Z.pow_mul_l in Hdiv.
+      eapply Z.mul_divide_cancel_r; eauto with *.
+      intros He%Z.pow_eq_0; subst; auto with *.
 Qed.
 
 Definition Square n := exists m, n = m ^ 2.
@@ -202,7 +167,7 @@ Proof.
       destruct (Zle_lt_or_eq _ _ Hnnegn'); subst; auto with *.
       lia.
     }
-    apply divide_pow_inv with (n := 2); auto with *.
+    apply divide_sq_inv; auto with *.
     - destruct (Zle_lt_or_eq _ _ Hnnegk); subst; auto with *.
       cbn in *.
       destruct (Zmult_integral _ _ Hk); auto with *.
@@ -222,54 +187,44 @@ Proof.
   eapply Square_product_inv_r; eauto.
 Qed.
 
-Lemma prime_mult_pow_aux : forall p k n m, prime p -> 1 <= k -> ~(p | m) -> (p ^ k | n * m) -> (p ^ k | n).
+Lemma prime_mult_sq_aux : forall p n m, prime p -> ~(p | m) -> (p ^ 2 | n * m) -> (p ^ 2 | n).
 Proof.
-  intros p k.
-  induction k using (well_founded_ind (Zwf_well_founded 0)).
-  intros n m Hp Hk Hndiv Hdiv.
-  destruct (Zle_lt_or_eq _ _ Hk) as [| <-].
-  - specialize (H (k - 1)).
-    cut_hyp H. {
-      unfold Zwf.
-      auto with *.
-    }
-    destruct (H n m) as [n' ->]; auto with *.
-    + apply Z.divide_trans with (p ^ k); auto.
-      replace k with ((k - 1) + 1) at 2; auto with *.
-      rewrite Z.pow_add_r; auto with *.
-    + replace (p ^ k) with (p * (p ^ (k - 1))) in *.
-      * assert (p ^ (k - 1) <> 0) as Hnz. {
-          apply Z.pow_nonzero; auto with *.
-          destruct Hp; auto with *.
-        }
-        replace (n' *_ * _) with (n' * m * p ^ (k - 1)) in Hdiv; try lia.
-        rewrite Z.mul_divide_cancel_r in *; auto.
-        apply prime_mult in Hdiv; auto.
-        destruct Hdiv; auto.
-        contradiction.
-      * replace k with ((k - 1 ) + 1) at 2; auto with *.
-        rewrite Z.pow_add_r; lia.
-  - rewrite Z.pow_1_r in *.
-    apply prime_mult in Hdiv; auto.
-    destruct Hdiv; auto.
-    contradiction.
+  intros p.
+  intros n m Hp Hnd [k Hk].
+  assert (p | n * m) as Hdivpnm. {
+    rewrite Hk.
+    auto with *.
+  }
+  apply prime_mult in Hdivpnm; auto.
+  destruct Hdivpnm as [[n' ->]|]; try contradiction.
+  assert (p | n' * m) as Hdivpn'm. {
+    destruct Hp.
+    replace (n' * m) with (k * p); auto with *.
+    rewrite <- Z.mul_cancel_r with (p := p); lia.
+  }
+  apply prime_mult in Hdivpn'm; auto.
+  destruct Hdivpn'm as [[n'' ->]|]; try contradiction.
+  auto with *.
+  exists n''.
+  lia.
 Qed.
 
-Lemma prime_mult_pow : forall p k n m, prime p -> 1 <= k -> rel_prime n m -> (p ^ k | n * m) -> (p ^ k | n) \/ (p ^ k | m).
+Lemma prime_mult_sq : forall p n m, prime p -> rel_prime n m -> (p ^ 2 | n * m) -> (p ^ 2 | n) \/ (p ^ 2 | m).
 Proof.
-  intros p k n m Hp Hk Hrp Hdiv.
+  intros p n m Hp Hrp Hdiv.
   destruct (Z.eq_dec 0 m); subst; auto with *.
   destruct (Z.eq_dec 0 n); subst; auto with *.
   
-  assert (p | n * m) as [Hpn | Hpm]%prime_mult; eauto using Z.divide_trans. 
+  assert (p | n * m) as [Hpn | Hpm]%prime_mult; auto with *.
+  - apply Z.divide_trans with (p ^ 2); auto with *.
   - left.
-    apply prime_mult_pow_aux with m; auto.
+    apply prime_mult_sq_aux with m; auto.
     apply rel_prime_factor_exclusive with n; auto with *.
     now destruct Hp.
   - right.
     rewrite Z.mul_comm in Hdiv.
     apply rel_prime_sym in Hrp.
-    apply prime_mult_pow_aux with n; auto.
+    apply prime_mult_sq_aux with n; auto.
     apply rel_prime_factor_exclusive with m; auto with *.
     now destruct Hp.
 Qed.
@@ -301,7 +256,7 @@ Proof.
       rewrite Z.pow_mul_l.
       auto with *.
     }
-    apply prime_mult_pow in Hdivppnm; auto with *.
+    apply prime_mult_sq in Hdivppnm; auto with *.
     destruct Hdivppnm as [[n' ->] | [m' ->]].
     + apply Square_product; auto.
       apply IHf with (m := m); auto with *.
