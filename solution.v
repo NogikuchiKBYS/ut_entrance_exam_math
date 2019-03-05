@@ -1,6 +1,6 @@
 Require Import ZArith Zwf.
 Require Import ZArith.Znumtheory.
-Require Import Lia.
+Require Import Psatz.
 Set Implicit Arguments.
 Open Scope Z.
 
@@ -71,14 +71,10 @@ Proof.
   - apply not_prime_divide_prime in Hnp; auto.
     destruct Hnp as (p & Hrange & [n' ->] & Hp).
     apply factors_prod; auto.
-    assert (1 <= n') as Hn'. {
-      destruct Hp, Hrange.
-      rewrite Z.le_mul_diag_r with (n := p); lia.
-    }
+    assert (1 <= n') as Hn'; try nia.
     apply H; auto.
     unfold Zwf.
-    split; try lia.
-    apply Z.lt_mul_diag_r; auto with *.
+    nia.
 Qed.
 
 Lemma factors_pos : forall n, Factors n -> 1 <= n.
@@ -117,9 +113,7 @@ Proof.
   - apply Z.mul_divide_mono_r.
     apply IHf; auto with *.
     + destruct H.
-      destruct (Z.le_0_mul k p) as [Hkp | Hkp]; auto with *.
-      destruct Hkp as [Hk _].
-      destruct (Zle_lt_or_eq _ _ Hk); subst; auto with *.
+      nia.
     + repeat rewrite Z.pow_mul_l in Hdiv.
       eapply Z.mul_divide_cancel_r; eauto with *.
       intros He%Z.pow_eq_0; subst; auto with *.
@@ -163,21 +157,13 @@ Proof.
   intros n m Hnzn (k & Hnnegk & Hk)%Square_nonneg_root (n' & Hnnegn' & ->)%Square_nonneg_root.
   destruct (Z.eq_dec m 0) as [| Hnzm];subst;[exists 0; lia|].
   assert ((n' | k)) as [k' ->]. {
-    assert (1 <= n') as Hposn'. {
-      destruct (Zle_lt_or_eq _ _ Hnnegn'); subst; auto with *.
-      lia.
-    }
-    apply divide_sq_inv; auto with *.
-    - destruct (Zle_lt_or_eq _ _ Hnnegk); subst; auto with *.
-      cbn in *.
-      destruct (Zmult_integral _ _ Hk); auto with *.
-    - rewrite <- Hk.
-      auto with *.
+    apply divide_sq_inv; try nia.
+    rewrite <- Hk.
+    auto with *.
   }
   exists k'.
-  rewrite Z.pow_mul_l in Hk.
-  rewrite Z.mul_comm in Hk.
-  rewrite Z.mul_cancel_r in Hk; auto with *.
+  rewrite <- Z.mul_cancel_r with (p := n' ^ 2); auto.
+  lia.
 Qed.
 
 Lemma Square_product_inv_l : forall n m, 0 <> m -> Square (n * m) -> Square m -> Square n.
@@ -200,7 +186,7 @@ Proof.
   assert (p | n' * m) as Hdivpn'm. {
     destruct Hp.
     replace (n' * m) with (k * p); auto with *.
-    rewrite <- Z.mul_cancel_r with (p := p); lia.
+    nia.
   }
   apply prime_mult in Hdivpn'm; auto.
   destruct Hdivpn'm as [[n'' ->]|]; try contradiction.
@@ -235,20 +221,13 @@ Lemma rel_prime_square_l : forall n m,
 Proof.
   intros n m Hposn Hposm Hrp (k & Hposk & Hk)%Square_nonneg_root.
   
-  assert (1 <= k) as Hposk'. {
-    destruct (Zle_lt_or_eq _ _ Hposk); auto with *.
-    subst.
-    cbn in *.
-    destruct (Zmult_integral _ _ Hk); subst; auto.
-  }
+  assert (1 <= k) as Hposk'; try nia.
   clear Hposk.
   revert Hk.
   revert n Hposn m Hposm Hrp.
   induction (pos_factors Hposk') as [| p k Hp].
   - exists 1.
-    cbn in *.
-    apply Z.mul_eq_1 in Hk.
-    lia.
+    nia.
   - intros n Hposn m Hpsm Hrp Hsq.
     pose proof Hp as [Hppos _].
     assert (p ^ 2 | n * m) as Hdivppnm. {
@@ -260,25 +239,24 @@ Proof.
     destruct Hdivppnm as [[n' ->] | [m' ->]].
     + apply Square_product; auto.
       apply IHf with (m := m); auto with *.
-      * cut (0 <= n').
-        --  intros [|<-]%Zle_lt_or_eq; auto with *.
-        -- apply Zmult_le_0_reg_r with (n := p * p); auto with *.
-           lia.
+      * cut (0 <= n'); try nia.
+        apply Zmult_le_0_reg_r with (n := p * p); auto with *.
+        lia.
       * eapply rel_prime_div; eauto with *.
       * rewrite <- Z.sub_move_0_r.
         apply Zmult_integral_l with (p ^ 2); try lia.
         intros x%Z.pow_eq_0; auto with *.
     + apply IHf with (m := m'); auto with *.
-      * cut (0 <= m').
-        --  intros [|<-]%Zle_lt_or_eq; auto with *.
-        -- apply Zmult_le_0_reg_r with (n := p * p); auto with *.
-           lia.
+      * cut (0 <= m'); try nia.
+        apply Zmult_le_0_reg_r with (n := p * p); auto with *.
+        lia.
       * apply rel_prime_sym.
         apply rel_prime_sym in Hrp.
         eapply rel_prime_div; eauto with *.
       * rewrite <- Z.sub_move_0_r.
-        apply Zmult_integral_l with (p ^ 2); try lia.
+        apply Zmult_integral_l with (p ^ 2). try lia.
         intros x%Z.pow_eq_0; auto with *.
+        lia.
 Qed.
 
 Lemma rel_prime_square_r : forall n m,
@@ -318,12 +296,7 @@ Qed.
 Theorem P2 : forall n, 0 < n -> ~Square ((n ^ 2 + 1) * (5 * n ^ 2 + 9)).
 Proof.
   intros n Hposn.
-  assert (1 <= n ^ 2 + 1) as Hp1. {
-    rewrite Z.pow_2_r.
-    replace 1 with (0 + 1) at 1; auto.
-    apply Z.add_le_mono_r.
-    auto with *.
-  }
+  assert (1 <= n ^ 2 + 1) as Hp1; try nia.
   assert (1 <= 5 * n ^ 2 + 9) as Hp2; auto with *.
     
   pose proof (P1 Hposn) as Hrp.
@@ -333,65 +306,41 @@ Proof.
     rewrite Zgcd_1_rel_prime in Hrp.
     intro Hsq.
     pose proof (rel_prime_square_l Hp1 Hp2 Hrp Hsq) as (m & Hnnnegm & Hm)%Square_nonneg_root.
-    destruct (Z.le_gt_cases m n) as [Hle | Hgt].
-    + assert (m ^ 2 < n ^ 2 + 1); auto with *.
-      apply Z.lt_le_trans with (m ^ 2 + 1); auto with *.
-      apply Z.add_le_mono_r.
-      apply Z.pow_le_mono_l.
-      split; auto.
-    + assert (n ^ 2 + 1 < m ^ 2); auto with *.
-      assert (n + 1 <= m); auto with *.
-      apply Z.lt_le_trans with ((n + 1) ^ 2); try lia.
-      apply Z.pow_le_mono_l; auto with *.
-  - assert (Z.even n = false) as Heven. {
-      rewrite <- Z.odd_spec in Ho.
-      rewrite <- Z.negb_odd, Ho.
-      reflexivity.
-    }
-    rewrite Heven in Hrp.
-    unfold negb in Hrp.
-    destruct Ho as [m ->].
+    destruct (Z.le_gt_cases m n); nia.
+  - destruct Ho as [m ->].
+    replace (Z.even (2 * m + 1)) with (Z.even (1 + 2 * m)) in Hrp;try solve [f_equal; lia].
+    rewrite Z.even_add_mul_2 in Hrp.
     remember (2 * m ^ 2 + 2 * m + 1) as X.
     replace ((2 * m + 1) ^ 2 + 1) with (X * 2) in *; try lia.
     remember (10 * m * (m + 1) + 7) as Y.
     replace (5 * (2 * m + 1) ^ 2 + 9) with (Y * 2) in *; try lia.
-    rewrite Z.gcd_mul_mono_r_nonneg in Hrp; auto with *.
-    rewrite Z.mul_id_l in Hrp; auto with *.
-    rewrite Zgcd_1_rel_prime in Hrp.
+    rewrite Z.gcd_mul_mono_r_nonneg, Z.mul_id_l, Zgcd_1_rel_prime in Hrp; auto with *.
     intro Hsq.
-    assert (Square Y). {
-      apply rel_prime_square_r with X; auto with *.
-      apply Square_product_inv_l with 4; auto with *.
-      + refine (fequal_impl _ _ Hsq).
-        lia.
-      + exists 2.
-        lia.
-    }
-    assert (forall n, Square n -> n mod 4 <> 3) as Hmod4. {
-      clear.
-      intros _ (m & Hnnegm & ->)%Square_nonneg_root.
-      destruct (Z.Even_or_Odd m).
-      - assert (4 | m ^ 2) as Hdiv. {
-          destruct H as [m' ->].
-          exists (m' ^ 2). lia.
+    absurd (Square Y).
+    + intro HsqY.
+      assert (Y mod 4 = 3) as HY3. {
+        rewrite HeqY.
+        rewrite Z.add_mod; try discriminate.
+        rewrite <- Z.mul_assoc.
+        assert (2 | m * (m + 1)) as [m' Heqm']. {
+          destruct (Z.Even_or_Odd m) as [[m' ->] | [m' ->]].
+          - exists (m' * (2 * m' + 1)). lia.
+          - exists ((2 * m' + 1) * (m' + 1)). lia.
         }
-        rewrite <- Z.mod_divide in Hdiv; auto with *.
-      - destruct H as [m' ->].
-        replace (_ ^ 2) with (1 + (m' ^ 2 + m') * 4); try lia.
+        replace (10 * (m * (m + 1))) with (5 * m' * 4); try lia.
+        rewrite Z.mod_mul; try discriminate.
+        reflexivity.
+      }
+      assert (Y mod 4 = 1) as HY1. {
+        apply Square_nonneg_root in HsqY.
+        destruct HsqY as (Y' & HnnegY' & ->).
+        destruct (Z.Even_or_Odd Y') as [[Y'' ->] | [Y'' ->]]; try lia.
+        replace (_ ^ 2) with (1 + (Y'' ^ 2 + Y'') * 4); try lia.
         rewrite Z.mod_add; auto with *.
-    }
-    absurd (Y mod 4 = 3); auto.
-    rewrite HeqY.
-    assert (4 | 10 * m * (m + 1)) as Hdiv. {
-      replace 4 with (2 * 2); try lia.
-      rewrite <- Z.mul_assoc.
-      apply factor_prod.
-      - rewrite <- Z.mod_divide; auto with *.
-      - destruct (Z.Even_or_Odd m) as [[m' ->] | [m' ->]]; auto with *.
-        replace (2 * m' + 1 + 1) with ((m' + 1) * 2); auto with *.
-    }
-    rewrite <- Z.mod_divide in Hdiv; try discriminate.
-    rewrite Z.add_mod; try discriminate.
-    rewrite Hdiv.
-    reflexivity.
+      }
+      congruence.
+    + apply rel_prime_square_r with X; auto with *.
+      apply Square_product_inv_l with 4; auto with *.
+      * refine (fequal_impl _ _ Hsq). lia.
+      * now exists 2.
 Qed.
