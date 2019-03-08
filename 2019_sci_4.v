@@ -4,14 +4,6 @@ Require Import Psatz.
 Set Implicit Arguments.
 Open Scope Z.
 
-Ltac cut_hyp H := refine ((fun x f => f (H x)) _ _); [| clear H; intro H].
-
-Lemma fequal_impl : forall {A} (P : A -> Prop) (x y : A), x = y -> P x -> P y.
-Proof.
-  intros.
-  now subst.
-Qed.
-
 Lemma rel_prime_factor_exclusive : forall a b c, a <> 0 -> b <> 0 -> rel_prime a b -> 1 < c -> (c | a) -> ~(c | b).
 Proof.
   intros a b c Ha Hb Hrp Hc Hdiv.
@@ -337,6 +329,7 @@ Proof.
         rewrite Z.mod_add; auto with *.
     + apply rel_prime_square_r with X; auto with *.
       apply Square_product_inv_l with 4; auto with *.
-      * refine (fequal_impl _ _ Hsq). lia.
+      * apply (eq_ind _ _ Hsq).
+        lia.
       * now exists 2.
 Qed.
