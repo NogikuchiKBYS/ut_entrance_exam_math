@@ -318,8 +318,9 @@ Proof.
     intro Hsq.
     absurd (Square Y).
     + intro HsqY.
-      assert (Y mod 4 = 3) as HY3. {
-        rewrite HeqY.
+      cut (Y mod 4 = 3 /\ Y mod 4 = 1); auto with *.
+      split.
+      * rewrite HeqY.
         rewrite Z.add_mod; try discriminate.
         rewrite <- Z.mul_assoc.
         assert (2 | m * (m + 1)) as [m' Heqm']. {
@@ -328,17 +329,12 @@ Proof.
           - exists ((2 * m' + 1) * (m' + 1)). lia.
         }
         replace (10 * (m * (m + 1))) with (5 * m' * 4); try lia.
-        rewrite Z.mod_mul; try discriminate.
-        reflexivity.
-      }
-      assert (Y mod 4 = 1) as HY1. {
-        apply Square_nonneg_root in HsqY.
+        rewrite Z.mod_mul; auto with *.
+      * apply Square_nonneg_root in HsqY.
         destruct HsqY as (Y' & HnnegY' & ->).
         destruct (Z.Even_or_Odd Y') as [[Y'' ->] | [Y'' ->]]; try lia.
         replace (_ ^ 2) with (1 + (Y'' ^ 2 + Y'') * 4); try lia.
         rewrite Z.mod_add; auto with *.
-      }
-      congruence.
     + apply rel_prime_square_r with X; auto with *.
       apply Square_product_inv_l with 4; auto with *.
       * refine (fequal_impl _ _ Hsq). lia.
